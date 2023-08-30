@@ -22,5 +22,3 @@ RUN  mkdir -p /var/www/static/ \
 COPY . .
 
 EXPOSE 8000
-
-ENTRYPOINT ["uwsgi", "--ini", "uwsgi.ini"]

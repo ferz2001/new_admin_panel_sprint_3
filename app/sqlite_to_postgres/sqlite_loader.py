@@ -19,7 +19,6 @@ class SQLiteLoader:
 
     def load_table(self, table_name: str, pack_size: int) -> Tuple[str, list]:
         TableDataClass = db_dataclasses.TABLES[table_name]
-
         cur = self.conn.cursor()
         cur.execute(f'SELECT * FROM {table_name};')
 

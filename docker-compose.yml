@@ -1,4 +1,4 @@
-version: '3'
+version: '2.1'
 services:
   postgres:
     image: postgres:13
@@ -12,27 +12,26 @@ services:
       POSTGRES_DB: "movies_database"
       POSTGRES_USER: "app"
       POSTGRES_PASSWORD: "123qwe"
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     expose:
       - "5432"
     networks:
       - app_network
 
-  migration:
-    build: ./app
-    image: movies_image
-    command: python manage.py migrate --noinput
-    volumes:
-      - migration_volume:/opt/app/migrations
-    depends_on:
-      - postgres
-    networks:
-      - app_network
-
   web:
-    image: movies_image
+    build: app
+    command: >
+      sh -c "python manage.py collectstatic --noinput \
+        && python manage.py migrate \
+        && uwsgi --strict --ini uwsgi.ini \
+        && cd sqlite_to_postgres && python load_data.py"
     depends_on:
-      - postgres
-      - migration
+       postgres:
+          condition: service_healthy
     env_file:
       - ./app/config/.env
     volumes:
@@ -55,23 +54,38 @@ services:
     networks:
       - app_network
 
-#  swagger:
-#    image: swaggerapi/swagger-ui
-#    container_name: swagger_ui_container
-#    volumes:
-#      - ./api_docs:/usr/share/nginx/html/doc
-#    environment:
-#      API_URL: doc/openapi.yaml
-#    depends_on:
-#      - nginx
-#    ports:
-#      - "8080:8080"
-#    networks:
-#      - app_network
+  elastic:
+    build: ./postgres_to_es/elastic
+    container_name: elastic
+    restart: always
+    expose:
+      - 9200
+    ports:
+      - '9200:9200'
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1" ]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+    networks:
+      - app_network
+
+  etl:
+    build: ./postgres_to_es/etl
+    container_name: etl
+    restart: always
+    env_file: postgres_to_es/etl/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elastic:
+        condition: service_healthy
+    entrypoint: [ "python", "main.py" ]
+    networks:
+      - app_network
 
 volumes:
   postgres_data:
   static_volume:
-  migration_volume:
 networks:
   app_network:
