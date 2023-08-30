@@ -55,7 +55,7 @@ services:
       - app_network
 
   elastic:
-    build: ./postgres_to_es/elastic
+    build: elastic
     container_name: elastic
     restart: always
     expose:
@@ -71,13 +71,11 @@ services:
       - app_network
 
   etl:
-    build: ./postgres_to_es/etl
+    build: postgres_to_es
     container_name: etl
     restart: always
-    env_file: postgres_to_es/etl/.env
+    env_file: postgres_to_es/.env
     depends_on:
-      web:
-        condition: service_started
       postgres:
         condition: service_healthy
       elastic:
