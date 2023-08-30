@@ -14,15 +14,15 @@ from state import State, JsonFileStorage
 def main(state: State, postgres_extractor: PostgresExtractor, elastic_saver: ElasticSaver) -> None:
     logger.info('start upload data')
 
-    upload_last_id = state.get_state('upload_last_id')
-    if not upload_last_id:
-        logger.info('first uploading')
+    last_upload_id = state.get_state('upload_last_id')
+    if not last_upload_id:
+        logger.info('first run upload')
         state.set_state('upload_started_at', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
 
     upload_started_at = state.get_state('upload_started_at')
     logger.info(f'upload_started_at = {upload_started_at}')
 
-    data = postgres_extractor.extract_table_data(before_date=upload_started_at, upload_last_id=upload_last_id)
+    data = postgres_extractor.extract_table_data(before_date=upload_started_at, last_upload_id=last_upload_id)
     for chunk_data in data:
         result = elastic_saver.bulk_insert(chunk_data)
         logger.debug(result)
@@ -60,8 +60,11 @@ if __name__ == '__main__':
     try:
         settings = Settings()
 
-        app_state = State(storage=JsonFileStorage(file_path='data.json'))
-        es_saver = ElasticSaver(connection=elasticsearch.Elasticsearch(hosts=settings.ES_URL), index='movies')
+        storage = JsonFileStorage(file_path='data.json')
+        app_state = State(storage=storage)
+
+        es_client = elasticsearch.Elasticsearch(hosts=settings.ES_URL)
+        es_saver = ElasticSaver(connection=es_client, index='movies')
 
         index_exists = es_saver.index_exists()
         if not index_exists:
@@ -80,16 +83,17 @@ if __name__ == '__main__':
         with PostgresConn(db_config=dsn) as pg_conn:
             pg_extractor = PostgresExtractor(connection=pg_conn)
 
-            upload_complete_at = app_state.get_state('upload_complete_at')
+            upload_complete = app_state.get_state('upload_complete_at')
 
-            if not upload_complete_at:
-                logger.info('upload not complete')
+            if not upload_complete:
+                logger.info('upload not comlete')
                 main(state=app_state, postgres_extractor=pg_extractor, elastic_saver=es_saver)
 
-            logger.info('upload complete')
+            logger.info('upload comlete')
 
             while True:
                 find_updated(state=app_state, postgres_extractor=pg_extractor, elastic_saver=es_saver)
+                logger.info('sleep')
                 sleep(settings.POLING_DATA_INTERVAL)
 
     except KeyboardInterrupt:

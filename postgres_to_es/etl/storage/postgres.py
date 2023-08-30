@@ -1,4 +1,6 @@
-from typing import Dict, List, Union
+from typing import Dict
+from typing import List
+from typing import Union
 from types import TracebackType
 from collections.abc import Iterator
 
@@ -14,7 +16,9 @@ class PostgresConn:
 
     @backoff()
     def __enter__(self) -> psycopg2.extensions.connection:
+        print('trying connection to postgress')
         self.db_conn = psycopg2.connect(**self.db_config, cursor_factory=DictCursor)
+        print('connection success')
         return self.db_conn
 
 
@@ -96,13 +100,13 @@ class PostgresExtractor:
                     yield chunk
 
 
-    def extract_table_data(self, before_date: str, upload_last_id: Union[str, None] = None) -> List:
+    def extract_table_data(self, before_date: str, last_upload_id: Union[str, None] = None) -> List:
         sql = self.SQL + 'WHERE "content"."film_work"."modified" <= %s'
         params = (before_date,)
 
-        if upload_last_id:
+        if last_upload_id:
             sql += 'AND "content"."film_work"."id" > %s'
-            params += (upload_last_id,)
+            params += (last_upload_id,)
 
         sql += ' GROUP BY "content"."film_work"."id" ORDER BY "content"."film_work"."id" ASC;'
 
