@@ -6,4 +6,4 @@ django-debug-toolbar==3.4
 split_settings==1.0.0
 django-cors-headers==4.2.0
 uwsgi==2.0.21
-django-environ
+django-environ==0.10.0

@@ -17,7 +17,7 @@ class MoviesSchema(BaseModel):
     title: str
     description: str
     director: List
-    actors_names: List
+    actors_names: List[str]
     writers_names: List
     actors: List[PersonSchema]
     writers: List[PersonSchema]

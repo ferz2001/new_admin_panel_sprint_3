@@ -10,7 +10,6 @@ ENV UWSGI_HARAKIRI 240
 ENV DJANGO_SETTINGS_MODULE 'config.settings'
 
 COPY requirements.txt requirements.txt
-COPY uwsgi/uwsgi.ini uwsgi.ini
 
 RUN  mkdir -p /var/www/static/ \
      && mkdir -p /var/www/media/ \
