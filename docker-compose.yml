@@ -27,7 +27,7 @@ services:
         && python manage.py collectstatic --noinput \
         && python manage.py migrate \
         && cd sqlite_to_postgres && python load_data.py \
-        && uwsgi --strict --ini uwsgi.ini"
+        && cd .. && uwsgi --strict --ini uwsgi.ini"
     depends_on:
        postgres:
           condition: service_healthy
